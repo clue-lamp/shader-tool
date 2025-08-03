@@ -1,14 +1,14 @@
 const CACHE_NAME = 'shader-metaballs-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/sketch.js',
-  '/shader.vert',
-  '/shader.frag',
-  '/p5.js',
-  '/p5.sound.min.js',
-  '/Roboto-Regular.ttf',
-  '/style.css'
+  '/shader-tool/',
+  '/shader-tool/index.html',
+  '/shader-tool/sketch.js',
+  '/shader-tool/shader.vert',
+  '/shader-tool/shader.frag',
+  '/shader-tool/p5.js',
+  '/shader-tool/p5.sound.min.js',
+  '/shader-tool/Roboto-Regular.ttf',
+  '/shader-tool/style.css'
 ];
 
 self.addEventListener('install', event => {

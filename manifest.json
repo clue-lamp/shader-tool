@@ -2,7 +2,7 @@
   "name": "Shader Metaballs",
   "short_name": "Shader",
   "description": "Interactive shader effects with metaballs",
-  "start_url": "/",
+  "start_url": "/shader-tool/",
   "display": "fullscreen",
   "orientation": "landscape",
   "theme_color": "#000000",
