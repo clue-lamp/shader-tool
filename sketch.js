@@ -87,6 +87,15 @@ function setup() {
   noStroke();
   frameRate(120);
   
+  // Prevent default touch behaviors for better mobile experience
+  document.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+  
+  document.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+  
   // Add CSS for hiding sliders
   let style = document.createElement('style');
   style.textContent = `
