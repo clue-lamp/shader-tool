@@ -155,14 +155,6 @@ function setup() {
   // Create metaball canvas (full screen)
   metaballCanvas = createGraphics(width, height);
   metaballCanvas.pixelDensity(1);
-  
-  // Create pre-rendered blurry circle for optimization
-  metaballBlurImage = createGraphics(100 * 4, 100 * 4); // Use default size of 100
-  metaballBlurImage.background(0, 0, 0, 0);
-  metaballBlurImage.fill(0, 0, 0, 200);
-  metaballBlurImage.noStroke();
-  metaballBlurImage.ellipse(100 * 2, 100 * 2, 100, 100);
-  metaballBlurImage.filter(BLUR, 100 / 2);
 
   // Create paint info display
   paintInfoDiv = createDiv('').position(width - 260, 10).style('background-color', 'rgba(0,0,0,0.7)').style('color', 'white').style('padding', '10px').style('font-family', 'monospace').style('font-size', '14px').style('border-radius', '5px');
@@ -589,13 +581,21 @@ function updateMetaballs() {
       metaballCanvas.circle(ball.x, ball.y, ball.size);
     }
   }
-  
-  // Step 1: Apply blur to create soft edges
+
+  // Step 1: Apply minimal blur to create soft edges (much smaller blur for better threshold)
   metaballCanvas.filter(BLUR, blurAmountSlider.value());
   
-  // Step 2: Set color mode and blend mode like BASE_METABALLS
-  metaballCanvas.colorMode(HSB);
+  // Step 2: Apply threshold to create sharp metaball boundaries
+  let thresholdValue = metaballThresholdSlider ? metaballThresholdSlider.value() : 0.3;
+  // Use a higher threshold value for more dramatic effect
+  metaballCanvas.filter(THRESHOLD, 0.8);
+  
+  // Step 3: Apply blur again to smooth the thresholded edges
+  metaballCanvas.filter(BLUR, blurAmountSlider.value() / 2);
+  
+  // Step 4: Set color mode and blend mode like BASE_METABALLS
   metaballCanvas.blendMode(ADD);
+  metaballCanvas.colorMode(HSB);
 }
 
 function updateModeInfo() {
