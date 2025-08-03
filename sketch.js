@@ -22,6 +22,8 @@ let fpsDiv; // HTML element for FPS display
 let metaballSize = 50; // current metaball size for preview
 let metaballBlurImage; // pre-rendered blurry circle for optimization
 let metaballThreshold = 0.3; // threshold for metaball effect
+let showUI = true; // track UI visibility
+let storedSliderValues = {}; // store slider values when UI is hidden
 
 function keyPressed() {
   if (key === '1') {
@@ -46,6 +48,22 @@ function keyPressed() {
   if (key === 'c' || key === 'C') {
     showRawCanvas = !showRawCanvas;
   }
+  if (key === 'f' || key === 'F') {
+    showUI = !showUI;
+    console.log('F key pressed, showUI =', showUI); // Debug log
+    
+    if (showUI) {
+      // Show UI - restore stored values
+      document.body.classList.remove('ui-hidden');
+      restoreSliderValues();
+    } else {
+      // Hide UI - store current values
+      storeSliderValues();
+      document.body.classList.add('ui-hidden');
+    }
+    
+    updateSliderVisibility(); // Update slider visibility when UI is toggled
+  }
   // Paint tools (only in paint mode)
   if (distanceMode === 2) {
     if (key === 'b' || key === 'B') paintTool = 'brush';
@@ -68,6 +86,34 @@ function setup() {
   fill(255);
   noStroke();
   frameRate(120);
+  
+  // Add CSS for hiding sliders
+  let style = document.createElement('style');
+  style.textContent = `
+    .slider-hidden {
+      display: none !important;
+      visibility: hidden !important;
+    }
+    .ui-hidden div {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    .ui-hidden input[type="range"] {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    .ui-hidden .p5-slider {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+  `;
+  document.head.appendChild(style);
 
   let y = 10;
   shiftSlider = createLabeledSlider('Shift', 0.0, 5.0, 1.0, 0.01, y); y += 30;
@@ -144,8 +190,15 @@ function draw() {
   let now = millis() / 1000;
   let dt = now - lastTime;
   lastTime = now;
-  progress += dt * channelNoiseSpeed.value();
-  ringShiftProgress += dt * ringShiftSpeedSlider.value();
+  
+  // Use stored values when UI is hidden, current values when visible
+  if (showUI) {
+    progress += dt * channelNoiseSpeed.value();
+    ringShiftProgress += dt * ringShiftSpeedSlider.value();
+  } else {
+    progress += dt * (storedSliderValues.channelNoiseSpeed || 0.2);
+    ringShiftProgress += dt * (storedSliderValues.ringShiftSpeed || 0.1);
+  }
 
   // Update shader parameters (always, even when sliders are active)
   if (distanceMode === 2) {
@@ -192,15 +245,28 @@ function draw() {
       myShader.setUniform("resolution", [width, height]);
       myShader.setUniform("progress", progress);
       myShader.setUniform("ringShiftProgress", ringShiftProgress);
-      myShader.setUniform("shift", shiftSlider.value());
-      myShader.setUniform("density", densitySlider.value());
-      myShader.setUniform("shiftSpeed", ringShiftSpeedSlider.value());
-      myShader.setUniform("shiftAmount", shiftAmountSlider.value());
+      // Use stored values when UI is hidden, current values when visible
+      if (showUI) {
+        myShader.setUniform("shift", shiftSlider.value());
+        myShader.setUniform("density", densitySlider.value());
+        myShader.setUniform("shiftSpeed", ringShiftSpeedSlider.value());
+        myShader.setUniform("shiftAmount", shiftAmountSlider.value());
+        myShader.setUniform("fadeStartInner", fadeStartInnerSlider.value());
+        myShader.setUniform("fadeEndInner", fadeEndInnerSlider.value());
+        myShader.setUniform("fadeStartOuter", fadeStartOuterSlider.value());
+        myShader.setUniform("fadeEndOuter", fadeEndOuterSlider.value());
+      } else {
+        // Use stored values when UI is hidden
+        myShader.setUniform("shift", storedSliderValues.shift || 1.0);
+        myShader.setUniform("density", storedSliderValues.density || 3.8);
+        myShader.setUniform("shiftSpeed", storedSliderValues.ringShiftSpeed || 0.1);
+        myShader.setUniform("shiftAmount", storedSliderValues.shiftAmount || 0.5);
+        myShader.setUniform("fadeStartInner", storedSliderValues.fadeStartInner || 0.0);
+        myShader.setUniform("fadeEndInner", storedSliderValues.fadeEndInner || 0.1);
+        myShader.setUniform("fadeStartOuter", storedSliderValues.fadeStartOuter || 0.85);
+        myShader.setUniform("fadeEndOuter", storedSliderValues.fadeEndOuter || 1.0);
+      }
       myShader.setUniform("distanceMode", distanceMode);
-      myShader.setUniform("fadeStartInner", fadeStartInnerSlider.value());
-      myShader.setUniform("fadeEndInner", fadeEndInnerSlider.value());
-      myShader.setUniform("fadeStartOuter", fadeStartOuterSlider.value());
-      myShader.setUniform("fadeEndOuter", fadeEndOuterSlider.value());
 
       beginShape();
       vertex(-1, -1, 0, 0, 0);
@@ -218,15 +284,28 @@ function draw() {
     myShader.setUniform("resolution", [width, height]);
     myShader.setUniform("progress", progress);
     myShader.setUniform("ringShiftProgress", ringShiftProgress);
-    myShader.setUniform("shift", shiftSlider.value());
-    myShader.setUniform("density", densitySlider.value());
-    myShader.setUniform("shiftSpeed", ringShiftSpeedSlider.value());
-    myShader.setUniform("shiftAmount", shiftAmountSlider.value());
+          // Use stored values when UI is hidden, current values when visible
+      if (showUI) {
+        myShader.setUniform("shift", shiftSlider.value());
+        myShader.setUniform("density", densitySlider.value());
+        myShader.setUniform("shiftSpeed", ringShiftSpeedSlider.value());
+        myShader.setUniform("shiftAmount", shiftAmountSlider.value());
+        myShader.setUniform("fadeStartInner", fadeStartInnerSlider.value());
+        myShader.setUniform("fadeEndInner", fadeEndInnerSlider.value());
+        myShader.setUniform("fadeStartOuter", fadeStartOuterSlider.value());
+        myShader.setUniform("fadeEndOuter", fadeEndOuterSlider.value());
+      } else {
+        // Use stored values when UI is hidden
+        myShader.setUniform("shift", storedSliderValues.shift || 1.0);
+        myShader.setUniform("density", storedSliderValues.density || 3.8);
+        myShader.setUniform("shiftSpeed", storedSliderValues.ringShiftSpeed || 0.1);
+        myShader.setUniform("shiftAmount", storedSliderValues.shiftAmount || 0.5);
+        myShader.setUniform("fadeStartInner", storedSliderValues.fadeStartInner || 0.0);
+        myShader.setUniform("fadeEndInner", storedSliderValues.fadeEndInner || 0.1);
+        myShader.setUniform("fadeStartOuter", storedSliderValues.fadeStartOuter || 0.85);
+        myShader.setUniform("fadeEndOuter", storedSliderValues.fadeEndOuter || 1.0);
+      }
     myShader.setUniform("distanceMode", distanceMode);
-    myShader.setUniform("fadeStartInner", fadeStartInnerSlider.value());
-    myShader.setUniform("fadeEndInner", fadeEndInnerSlider.value());
-    myShader.setUniform("fadeStartOuter", fadeStartOuterSlider.value());
-    myShader.setUniform("fadeEndOuter", fadeEndOuterSlider.value());
 
     beginShape();
     vertex(-1, -1, 0, 0, 0);
@@ -239,24 +318,43 @@ function draw() {
     camera();
   }
   
-  // Update paint info display
-  if (distanceMode === 0) {
-    updateModeInfo();
-  } else if (distanceMode === 2) {
-    updatePaintInfo();
-    drawBrushPreview();
-  } else if (distanceMode === 3) {
-    updateMetaballInfo();
-    drawMetaballPreview();
+  // Update UI elements only if UI is visible
+  if (showUI) {
+    // Show all main sliders first
+    showAllSliders();
+    
+    // Update paint info display
+    if (distanceMode === 0) {
+      updateModeInfo();
+    } else if (distanceMode === 2) {
+      updatePaintInfo();
+      drawBrushPreview();
+    } else if (distanceMode === 3) {
+      updateMetaballInfo();
+      drawMetaballPreview();
+    } else {
+      paintInfoDiv.hide();
+    }
+    
+    // Update FPS display
+    updateFPS();
+    
+    // Update mode selector display
+    updateModeSelector();
+    
+    // Update slider visibility based on current mode
+    updateSliderVisibility();
   } else {
+    // Hide all UI elements when UI is hidden
     paintInfoDiv.hide();
+    fpsDiv.hide();
+    modeSelectorDiv.hide();
+    
+    // Hide all sliders when UI is hidden
+    hideAllSliders();
+    
+    console.log('UI hidden, sliders should be hidden'); // Debug log
   }
-  
-  // Update FPS display
-  updateFPS();
-  
-  // Update mode selector display
-  updateModeSelector();
   
   // Apply threshold filter at the very end for lava mode (like BASE_METABALLS)
   // Removed threshold filter to allow shader gradients to work
@@ -523,33 +621,217 @@ function updateFPS() {
 }
 
 function updateModeSelector() {
+  modeSelectorDiv.show();
   let modeNames = ['Circle', 'Line', 'Paint', 'Lava'];
   let currentMode = modeNames[distanceMode] || 'Unknown';
   let modeNumber = distanceMode + 1;
   modeSelectorDiv.html('Mode: ' + modeNumber + ' (' + currentMode + ') | Press 1-4 to switch');
 }
 
+function storeSliderValues() {
+  // Store current slider values before hiding UI
+  storedSliderValues = {
+    shift: shiftSlider ? shiftSlider.value() : 1.0,
+    density: densitySlider ? densitySlider.value() : 3.8,
+    channelNoiseSpeed: channelNoiseSpeed ? channelNoiseSpeed.value() : 0.2,
+    ringShiftSpeed: ringShiftSpeedSlider ? ringShiftSpeedSlider.value() : 0.1,
+    shiftAmount: shiftAmountSlider ? shiftAmountSlider.value() : 0.5,
+    fadeStartInner: fadeStartInnerSlider ? fadeStartInnerSlider.value() : 0.0,
+    fadeEndInner: fadeEndInnerSlider ? fadeEndInnerSlider.value() : 0.1,
+    fadeStartOuter: fadeStartOuterSlider ? fadeStartOuterSlider.value() : 0.85,
+    fadeEndOuter: fadeEndOuterSlider ? fadeEndOuterSlider.value() : 1.0,
+    brushSize: brushSizeSlider ? brushSizeSlider.value() : 100,
+    blurAmount: blurAmountSlider ? blurAmountSlider.value() : 30,
+    metaballThreshold: metaballThresholdSlider ? metaballThresholdSlider.value() : 0.3,
+    metaballSpeed: metaballSpeedSlider ? metaballSpeedSlider.value() : 0.1,
+    metaballStroke: metaballStrokeSlider ? metaballStrokeSlider.value() : 0
+  };
+  console.log('Stored slider values:', storedSliderValues);
+}
+
+function restoreSliderValues() {
+  // Restore slider values when showing UI
+  if (storedSliderValues.shift && shiftSlider) shiftSlider.value(storedSliderValues.shift);
+  if (storedSliderValues.density && densitySlider) densitySlider.value(storedSliderValues.density);
+  if (storedSliderValues.channelNoiseSpeed && channelNoiseSpeed) channelNoiseSpeed.value(storedSliderValues.channelNoiseSpeed);
+  if (storedSliderValues.ringShiftSpeed && ringShiftSpeedSlider) ringShiftSpeedSlider.value(storedSliderValues.ringShiftSpeed);
+  if (storedSliderValues.shiftAmount && shiftAmountSlider) shiftAmountSlider.value(storedSliderValues.shiftAmount);
+  if (storedSliderValues.fadeStartInner && fadeStartInnerSlider) fadeStartInnerSlider.value(storedSliderValues.fadeStartInner);
+  if (storedSliderValues.fadeEndInner && fadeEndInnerSlider) fadeEndInnerSlider.value(storedSliderValues.fadeEndInner);
+  if (storedSliderValues.fadeStartOuter && fadeStartOuterSlider) fadeStartOuterSlider.value(storedSliderValues.fadeStartOuter);
+  if (storedSliderValues.fadeEndOuter && fadeEndOuterSlider) fadeEndOuterSlider.value(storedSliderValues.fadeEndOuter);
+  if (storedSliderValues.brushSize && brushSizeSlider) brushSizeSlider.value(storedSliderValues.brushSize);
+  if (storedSliderValues.blurAmount && blurAmountSlider) blurAmountSlider.value(storedSliderValues.blurAmount);
+  if (storedSliderValues.metaballThreshold && metaballThresholdSlider) metaballThresholdSlider.value(storedSliderValues.metaballThreshold);
+  if (storedSliderValues.metaballSpeed && metaballSpeedSlider) metaballSpeedSlider.value(storedSliderValues.metaballSpeed);
+  if (storedSliderValues.metaballStroke && metaballStrokeSlider) metaballStrokeSlider.value(storedSliderValues.metaballStroke);
+  console.log('Restored slider values:', storedSliderValues);
+}
+
+function hideAllSliders() {
+  // Hide all sliders using multiple methods
+  const allSliders = [
+    shiftSlider, densitySlider, channelNoiseSpeed, ringShiftSpeedSlider, shiftAmountSlider,
+    fadeStartInnerSlider, fadeEndInnerSlider, fadeStartOuterSlider, fadeEndOuterSlider,
+    brushSizeSlider, blurAmountSlider, metaballThresholdSlider, metaballSpeedSlider, metaballStrokeSlider
+  ];
+  
+  for (let slider of allSliders) {
+    if (slider && slider.parent() && slider.parent().elt) {
+      try {
+        // Method 1: Set opacity to 0
+        slider.parent().elt.style.opacity = '0';
+        
+        // Method 2: Set display to none
+        slider.parent().elt.style.display = 'none';
+        
+        // Method 3: Set visibility to hidden
+        slider.parent().elt.style.visibility = 'hidden';
+        
+        // Method 4: Set position to absolute and move off-screen
+        slider.parent().elt.style.position = 'absolute';
+        slider.parent().elt.style.left = '-9999px';
+        slider.parent().elt.style.top = '-9999px';
+        
+        // Method 5: Set pointer-events to none
+        slider.parent().elt.style.pointerEvents = 'none';
+        
+        // Method 6: Add CSS class
+        slider.parent().elt.classList.add('slider-hidden');
+        
+        console.log('Applied multiple hiding methods to slider');
+      } catch (e) {
+        console.log('Error hiding slider:', e);
+      }
+    }
+  }
+  
+  // Also try to hide all divs that might be slider containers
+  const allDivs = document.querySelectorAll('div');
+  for (let div of allDivs) {
+    if (div.style.position === 'relative' && div.style.width === '300px') {
+      div.style.display = 'none';
+      div.style.visibility = 'hidden';
+      div.style.opacity = '0';
+      console.log('Hidden potential slider container div');
+    }
+  }
+  
+  // Debug: log to see if function is being called
+  console.log('hideAllSliders called, showUI =', showUI);
+  
+  // Additional aggressive hiding - hide all range inputs
+  const allRangeInputs = document.querySelectorAll('input[type="range"]');
+  for (let input of allRangeInputs) {
+    input.style.display = 'none';
+    input.style.visibility = 'hidden';
+    input.style.opacity = '0';
+    console.log('Hidden range input');
+  }
+  
+  // Hide all elements with slider-related classes
+  const sliderElements = document.querySelectorAll('.slider, .p5-slider, [class*="slider"]');
+  for (let element of sliderElements) {
+    element.style.display = 'none';
+    element.style.visibility = 'hidden';
+    element.style.opacity = '0';
+    console.log('Hidden slider element');
+  }
+}
+
+function showAllSliders() {
+  // Reset all slider visibility properties
+  const allSliders = [
+    shiftSlider, densitySlider, channelNoiseSpeed, ringShiftSpeedSlider, shiftAmountSlider,
+    fadeStartInnerSlider, fadeEndInnerSlider, fadeStartOuterSlider, fadeEndOuterSlider,
+    brushSizeSlider, blurAmountSlider
+  ];
+  
+  for (let slider of allSliders) {
+    if (slider && slider.parent() && slider.parent().elt) {
+      try {
+        // Reset all hiding properties
+        slider.parent().elt.style.opacity = '1';
+        slider.parent().elt.style.display = 'block';
+        slider.parent().elt.style.visibility = 'visible';
+        slider.parent().elt.style.position = 'relative';
+        slider.parent().elt.style.left = 'auto';
+        slider.parent().elt.style.top = 'auto';
+        slider.parent().elt.style.pointerEvents = 'auto';
+        
+        // Remove CSS class
+        slider.parent().elt.classList.remove('slider-hidden');
+        
+        console.log('Reset slider visibility properties');
+      } catch (e) {
+        console.log('Error showing slider:', e);
+      }
+    }
+  }
+  
+  // Show all range inputs
+  const allRangeInputs = document.querySelectorAll('input[type="range"]');
+  for (let input of allRangeInputs) {
+    input.style.display = 'block';
+    input.style.visibility = 'visible';
+    input.style.opacity = '1';
+    console.log('Showed range input');
+  }
+  
+  // Show all elements with slider-related classes
+  const sliderElements = document.querySelectorAll('.slider, .p5-slider, [class*="slider"]');
+  for (let element of sliderElements) {
+    element.style.display = 'block';
+    element.style.visibility = 'visible';
+    element.style.opacity = '1';
+    console.log('Showed slider element');
+  }
+  
+  // Show all divs that might be slider containers
+  const allDivs = document.querySelectorAll('div');
+  for (let div of allDivs) {
+    if (div.style.position === 'relative' && div.style.width === '300px') {
+      div.style.display = 'block';
+      div.style.visibility = 'visible';
+      div.style.opacity = '1';
+      console.log('Showed potential slider container div');
+    }
+  }
+  
+  console.log('All sliders should be visible now');
+}
+
 function updateSliderVisibility() {
-  // Show/hide lava sliders based on current mode (with safety checks)
-  if (distanceMode === 3) {
-    if (metaballThresholdSlider && metaballThresholdSlider.parent() && metaballThresholdSlider.parent().elt) {
-      metaballThresholdSlider.parent().elt.style.display = 'block';
-    }
-    if (metaballSpeedSlider && metaballSpeedSlider.parent() && metaballSpeedSlider.parent().elt) {
-      metaballSpeedSlider.parent().elt.style.display = 'block';
-    }
-    if (metaballStrokeSlider && metaballStrokeSlider.parent() && metaballStrokeSlider.parent().elt) {
-      metaballStrokeSlider.parent().elt.style.display = 'block';
-    }
-  } else {
-    if (metaballThresholdSlider && metaballThresholdSlider.parent() && metaballThresholdSlider.parent().elt) {
-      metaballThresholdSlider.parent().elt.style.display = 'none';
-    }
-    if (metaballSpeedSlider && metaballSpeedSlider.parent() && metaballSpeedSlider.parent().elt) {
-      metaballSpeedSlider.parent().elt.style.display = 'none';
-    }
-    if (metaballStrokeSlider && metaballStrokeSlider.parent() && metaballStrokeSlider.parent().elt) {
-      metaballStrokeSlider.parent().elt.style.display = 'none';
+  // Show/hide lava sliders based on current mode and UI visibility
+  let shouldShow = (distanceMode === 3) && showUI;
+  
+  const lavaSliders = [metaballThresholdSlider, metaballSpeedSlider, metaballStrokeSlider];
+  
+  for (let slider of lavaSliders) {
+    if (slider && slider.parent() && slider.parent().elt) {
+      try {
+        if (shouldShow) {
+          // Show lava sliders
+          slider.parent().elt.style.opacity = '1';
+          slider.parent().elt.style.display = 'block';
+          slider.parent().elt.style.visibility = 'visible';
+          slider.parent().elt.style.position = 'relative';
+          slider.parent().elt.style.left = 'auto';
+          slider.parent().elt.style.top = 'auto';
+          slider.parent().elt.style.pointerEvents = 'auto';
+        } else {
+          // Hide lava sliders
+          slider.parent().elt.style.opacity = '0';
+          slider.parent().elt.style.display = 'none';
+          slider.parent().elt.style.visibility = 'hidden';
+          slider.parent().elt.style.position = 'absolute';
+          slider.parent().elt.style.left = '-9999px';
+          slider.parent().elt.style.top = '-9999px';
+          slider.parent().elt.style.pointerEvents = 'none';
+        }
+      } catch (e) {
+        console.log('Error updating lava slider visibility:', e);
+      }
     }
   }
 }
