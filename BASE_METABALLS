@@ -1,0 +1,99 @@
+// using blur + threshold method.
+
+let inc = 0.001
+const bSize = 30
+let speedSl
+let threshSl
+let scaleSl
+let metaMode = true
+
+let balls = []
+
+function setup() {
+  createCanvas(400, 400)
+  background(255)
+  noStroke()
+  frameRate(50)
+  
+  for (let i = 20; i > 0; i--) {
+    createBall(random(0, width), random(0, height))
+  }
+  
+  speedSl = createSlider(0, 10, 2.5, 0.1)
+  threshSl = createSlider(0.01, 0.8, 0.3, 0.01)
+  scaleSl = createSlider(0.1, 2, 0.6, 0.01)
+  
+  // make one blurry thing and copy, for optimizing
+  pg = createGraphics(bSize * 4, bSize * 4);
+  pg.background(0,0,0,0);
+  pg.fill(0, 0, 0, 200);
+  pg.noStroke();
+  pg.ellipse(bSize * 2, bSize * 2, bSize, bSize);
+  pg.filter(BLUR, bSize / 2);
+  imageMode(CENTER)
+}
+
+function draw() {
+  // get slider values
+  const spd = speedSl.value()
+  const thr = threshSl.value()
+  const scl = scaleSl.value() * (metaMode + 1)
+  const scl2 = max([scl, 1])
+  
+  if (metaMode === true) {
+    blendMode(BLEND)
+    background(millis() / 50 % 360, 0, 50)
+  }
+    for (let ball of balls) {
+      push()
+      translate(ball.x, ball.y)
+      scale(ball.s * scl)
+      drawBlurry(0, 0)
+      pop()
+      ball.x += map(noise(ball.nx, ball.ny), 0, 1, -spd, spd)
+      ball.y += map(noise(ball.ny), 0, 1, -spd, spd)
+      
+      ball.nx += inc
+      ball.ny += inc
+      const hs = bSize/2 + 10
+  
+      if (ball.x < -hs * scl2) ball.x = width + hs
+      if (ball.x > width + hs * scl2) ball.x = -hs
+      if (ball.y < -hs * scl2) ball.y = height + hs
+      if (ball.y > height + hs * scl2) ball.y = -hs
+    }
+  
+  // effect of cursor being a ball
+  drawBlurry(mouseX, mouseY)
+  
+  filter(THRESHOLD, thr)
+  blendMode(ADD)
+  colorMode(HSB)
+  fill(millis() / 100 % 360, 50, 1)
+  rect(0, 0, width, height)
+}
+
+function createBall(x, y) {
+      balls.push({x: x, y: y, nx: random(100), ny:  random(100), s: randomGaussian(1, 0.5)})
+}
+
+// access img from setup
+function drawBlurry(x, y) {
+  blendMode(BLEND)
+  image(pg, x, y)
+}
+
+function mousePressed () {
+    createBall(mouseX, mouseY)
+}
+
+function keyPressed() {
+  if (keyCode == 82) {
+    balls = []
+  }
+  if (keyCode === 65) {
+    for(let i = 5; i > 0; i--) {
+      createBall(random(0, width), random(0, height))
+    }
+  }
+}
